@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图像识别界面</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            display: flex;
+            width: 80%;
+            height: 80vh;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .image-box {
+            width: 40%;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed #ccc;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-box svg {
+            width: 100px;
+            height: 100px;
+            fill: #777;
+        }
+
+        .image-box p {
+            color: #999;
+            margin-top: 10px;
+        }
+
+        .button-container {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .button-container button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .image-box img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- 左侧上传框 -->
+        <div class="image-box" id="left-image-box">
+            <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M512 128C300.3 128 128 300.3 128 512s172.3 384 384 384 384-172.3 384-384S723.7 128 512 128zm0 704c-176.7 0-320-143.3-320-320s143.3-320 320-320 320 143.3 320 320-143.3 320-320 320z"/>
+                <path d="M512 416m-64 0a64 64 0 1 0 128 0 64 64 0 1 0-128 0Z"/>
+            </svg>
+            <p>点击此处选择图片</p>
+            <input type="file" id="left-image-input" accept="image/png, image/jpeg">
+        </div>
+
+        <!-- 识别按钮 -->
+        <div class="button-container">
+            <button id="recognize-button">识别</button>
+        </div>
+
+        <!-- 右侧显示框 -->
+        <div class="image-box" id="right-image-box">
+            <!-- 这里用于显示处理后的图片 -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const fileInput = document.getElementById('left-image-input');
+            const leftImageBox = document.getElementById('left-image-box');
+            const recognizeButton = document.getElementById('recognize-button');
+            const rightImageBox = document.getElementById('right-image-box');
+
+            if (!fileInput) {
+                console.error("错误：找不到 input 元素，请检查 HTML 结构！");
+                return;
+            }
+
+            console.log("页面加载完成，前端 JS 脚本初始化成功");
+
+            // 点击左侧框打开文件选择
+            leftImageBox.addEventListener('click', function () {
+                console.log("左侧图像框被点击，打开文件选择窗口");
+                fileInput.click();
+            });
+
+            // 监听文件选择
+            fileInput.addEventListener('change', function (event) {
+                const file = event.target.files[0];
+
+                if (file) {
+                    console.log("用户选择了文件:", file.name);
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        console.log("读取文件成功，更新左侧预览");
+                        leftImageBox.innerHTML = ''; // 清空原内容
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.alt = '上传的图片';
+                        leftImageBox.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    console.warn("用户未选择任何文件");
+                }
+            });
+
+            // 识别按钮点击事件
+            recognizeButton.addEventListener('click', function () {
+                console.log("识别按钮被点击");
+
+                const file = fileInput.files[0];
+                if (!file) {
+                    alert('请先选择一张图片！');
+                    console.warn("识别请求失败：未选择图片");
+                    return;
+                }
+
+                console.log("准备上传图片:", file.name);
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                console.log("发送图片到后端...");
+                fetch('/upload-image/', {
+                    method: 'POST',
+                    body: formData,
+                })
+                .then(response => {
+                    console.log("请求已发送，等待服务器响应...");
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("服务器返回数据:", data);
+                    if (data.status === 'success') {
+                        alert('图片上传成功！');
+                        console.log('文件保存路径：', data.file_path);
+                    } else {
+                        alert('图片上传失败：' + data.message);
+                        console.error("上传失败，服务器返回错误:", data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('上传失败，发生错误:', error);
+                    alert('上传失败，请重试！');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
